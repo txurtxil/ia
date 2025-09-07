@@ -1,98 +1,101 @@
 #!/data/data/com.termux/files/usr/bin/bash
 # install_shellai.sh - Script de instalación automática para ShellAI
 
+# --- Función para mostrar una barra de progreso simple ---
+show_progress() {
+    local current=$1
+    local total=$2
+    local task_name=$3
+    local width=40
+    local percent=$((current * 100 / total))
+    local filled=$((percent * width / 100))
+    local remaining=$((width - filled))
+    local bar=$(printf "%${filled}s" | tr ' ' '#')
+    local space=$(printf "%${remaining}s" | tr ' ' '-')
+    echo -ne "\r[$bar$space] $percent% - $task_name"
+}
+
 echo "🚀 Iniciando instalación automática de ShellAI..."
 echo "=================================================="
 
+local total_steps=7
+local current_step=0
+
 # Paso 1: Actualizar repositorios e instalar dependencias básicas de Termux
-echo "🔹 Paso 1: Instalando dependencias de Termux..."
-pkg update -y
-pkg install -y proot-distro git curl wget nano vim jq tar gzip openssl
+((current_step++))
+show_progress $current_step $total_steps "Instalando dependencias de Termux..."
+pkg update -y >/dev/null 2>&1
+pkg install -y proot-distro git curl wget nano vim jq tar gzip openssl >/dev/null 2>&1
+echo -e "\r$(printf '%*s' 80)"
+echo -e "[✓] Paso $current_step/$total_steps completado."
 
 # Paso 2: Instalar y configurar Debian
-echo "🔹 Paso 2: Instalando y configurando Debian..."
+((current_step++))
+show_progress $current_step $total_steps "Instalando y configurando Debian..."
 if ! proot-distro list | grep -q '^debian'; then
-    proot-distro install debian
+    proot-distro install debian >/dev/null 2>&1
 fi
+echo -e "\r$(printf '%*s' 80)"
+echo -e "[✓] Paso $current_step/$total_steps completado."
 
-# Instalar paquetes dentro de Debian
-echo "🔹 Paso 3: Instalando OpenSCAD, FreeCAD y herramientas de red en Debian..."
+# Paso 3: Instalar paquetes dentro de Debian
+((current_step++))
+show_progress $current_step $total_steps "Instalando OpenSCAD, FreeCAD y herramientas de red..."
 proot-distro login debian -- bash -c "
-    apt update && apt upgrade -y &&
-    apt install -y openscad freecad freecad-common freecad-python3 \\
+    apt update >/dev/null 2>&1 &&
+    apt upgrade -y >/dev/null 2>&1 &&
+    apt install -y --no-install-recommends openscad freecad freecad-common freecad-python3 \\
                   iproute2 net-tools traceroute mtr whois dnsutils tcpdump nmap \\
-                  python3 python3-pip
-"
+                  python3 python3-pip" >/dev/null 2>&1
+echo -e "\r$(printf '%*s' 80)"
+echo -e "[✓] Paso $current_step/$total_steps completado."
 
 # Paso 4: Solicitar acceso al almacenamiento
-echo "🔹 Paso 4: Configurando acceso al almacenamiento..."
+((current_step++))
+show_progress $current_step $total_steps "Configurando acceso al almacenamiento..."
 termux-setup-storage
-sleep 2 # Dar tiempo al usuario para aceptar el permiso
+sleep 2
+echo -e "\r$(printf '%*s' 80)"
+echo -e "[✓] Paso $current_step/$total_steps completado."
 
 # Paso 5: Descargar y restaurar el backup más reciente desde GitHub
-echo "🔹 Paso 5: Descargando el backup más reciente de ShellAI desde GitHub..."
-
-# Crear directorio del proyecto
+((current_step++))
+show_progress $current_step $total_steps "Descargando el backup más reciente..."
 cd "$HOME"
 PROJECT_DIR="$HOME/ShellAI"
 BACKUP_DIR="$HOME/ShellAI_backups"
-
 mkdir -p "$PROJECT_DIR"
 mkdir -p "$BACKUP_DIR"
 
-# Obtener la lista de backups desde la API de GitHub
-echo "   Obteniendo lista de backups disponibles..."
 BACKUP_LIST=$(curl -s "https://api.github.com/repos/txurtxil/ia/contents/backups" | jq -r '.[] | select(.name | endswith(".tar.gz")) | .name')
-
-if [ -z "$BACKUP_LIST" ]; then
-    echo "❌ Error: No se encontraron archivos de backup (.tar.gz) en el repositorio."
-    echo "   Asegúrate de haber ejecutado la opción 4 ('Backup COMPLETO del Proyecto a GitHub') al menos una vez."
-    exit 1
-fi
-
-# Encontrar el backup más reciente (por nombre, asumiendo que incluye la fecha)
 LATEST_BACKUP=$(echo "$BACKUP_LIST" | sort -r | head -n 1)
 
 if [ -z "$LATEST_BACKUP" ]; then
-    echo "❌ Error: No se pudo determinar el backup más reciente."
+    echo -e "\n❌ Error: No se encontró ningún backup."
     exit 1
 fi
 
-echo "   Backup más reciente encontrado: $LATEST_BACKUP"
-
-# Descargar el backup
 BACKUP_URL="https://raw.githubusercontent.com/txurtxil/ia/main/backups/$LATEST_BACKUP"
 LOCAL_BACKUP_PATH="$BACKUP_DIR/$LATEST_BACKUP"
+curl -L -o "$LOCAL_BACKUP_PATH" "$BACKUP_URL" >/dev/null 2>&1
+echo -e "\r$(printf '%*s' 80)"
+echo -e "[✓] Paso $current_step/$total_steps completado."
 
-echo "   Descargando: $BACKUP_URL"
-curl -L -o "$LOCAL_BACKUP_PATH" "$BACKUP_URL"
-
-if [ ! -f "$LOCAL_BACKUP_PATH" ]; then
-    echo "❌ Error: No se pudo descargar el archivo de backup."
-    exit 1
-fi
-
-# Descomprimir el backup en el directorio del proyecto
-echo "   Descomprimiendo el backup en $PROJECT_DIR..."
-tar -xzf "$LOCAL_BACKUP_PATH" -C "$PROJECT_DIR"
-
-# Verificar que los archivos esenciales están presentes
-if [ ! -f "$PROJECT_DIR/ShellAI.sh" ] || [ ! -d "$PROJECT_DIR/modules" ]; then
-    echo "❌ Error: El backup no contiene los archivos esenciales del proyecto."
-    echo "   Contenido del directorio:"
-    ls -la "$PROJECT_DIR"
-    exit 1
-fi
-
-# Paso 6: Hacer el script principal ejecutable
+# Paso 6: Descomprimir el backup
+((current_step++))
+show_progress $current_step $total_steps "Restaurando archivos del proyecto..."
+tar -xzf "$LOCAL_BACKUP_PATH" -C "$PROJECT_DIR" >/dev/null 2>&1
 chmod +x "$PROJECT_DIR/ShellAI.sh"
+echo -e "\r$(printf '%*s' 80)"
+echo -e "[✓] Paso $current_step/$total_steps completado."
 
-# Paso 7: Ejecutar ShellAI.sh para completar la configuración (creará directorios, pedirá credenciales, etc.)
-echo "🔹 Paso 7: Iniciando ShellAI.sh para configuración final..."
-echo "Por favor, introduce tus credenciales cuando se te soliciten."
-sleep 3
+# Paso 7: Ejecutar ShellAI.sh para configuración final
+((current_step++))
+show_progress $current_step $total_steps "Iniciando configuración final..."
 cd "$PROJECT_DIR"
 ./ShellAI.sh
+echo -e "\r$(printf '%*s' 80)"
+echo -e "[✓] Paso $current_step/$total_steps completado."
 
-echo "🎉 ¡Instalación completada con éxito!"
+echo -e "\n🎉 ¡Instalación completada con éxito!"
 echo "Puedes iniciar ShellAI.sh en cualquier momento con: cd ~/ShellAI && ./ShellAI.sh"
