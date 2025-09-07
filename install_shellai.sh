@@ -4,10 +4,10 @@
 echo "🚀 Iniciando instalación automática de ShellAI..."
 echo "=================================================="
 
-# Paso 1: Actualizar repositorios e instalar dependencias básicas de Termux
+# Paso 1: Actualizar repositorios e instalar dependencias básicas de Termux (SIN git, SIN openssh)
 echo "🔹 Paso 1/7: Instalando dependencias de Termux..."
 pkg update -y --quiet >/dev/null 2>&1
-pkg install -y --quiet proot-distro curl wget tar gzip openssl jq >/dev/null 2>&1
+pkg install -y --quiet proot-distro curl wget tar gzip openssl jq nano vim >/dev/null 2>&1
 echo "✅ Paso 1/7 completado."
 
 # Paso 2: Instalar y configurar Debian
