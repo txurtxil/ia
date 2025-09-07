@@ -6,31 +6,31 @@ echo "=================================================="
 
 # Paso 1: Actualizar repositorios e instalar dependencias básicas de Termux
 echo "🔹 Paso 1/7: Instalando dependencias de Termux..."
-pkg update -y >/dev/null 2>&1
-pkg install -y proot-distro git curl wget nano vim jq tar gzip openssl
+pkg update -y --quiet >/dev/null 2>&1
+pkg install -y --quiet proot-distro curl wget tar gzip openssl jq >/dev/null 2>&1
 echo "✅ Paso 1/7 completado."
 
 # Paso 2: Instalar y configurar Debian
 echo "🔹 Paso 2/7: Instalando y configurando Debian..."
 if ! proot-distro list | grep -q '^debian'; then
-    proot-distro install debian >/dev/null 2>&1
+    proot-distro install debian --quiet >/dev/null 2>&1
 fi
 echo "✅ Paso 2/7 completado."
 
 # Paso 3: Instalar paquetes dentro de Debian
 echo "🔹 Paso 3/7: Instalando OpenSCAD, FreeCAD y herramientas de red..."
 proot-distro login debian -- bash -c "
-    apt update >/dev/null 2>&1 &&
-    apt upgrade -y >/dev/null 2>&1 &&
-    apt install -y --no-install-recommends openscad freecad freecad-common freecad-python3 \\
+    apt update --quiet >/dev/null 2>&1 &&
+    apt upgrade -y --quiet >/dev/null 2>&1 &&
+    apt install -y --quiet --no-install-recommends openscad freecad freecad-common freecad-python3 \\
                   iproute2 net-tools traceroute mtr whois dnsutils tcpdump nmap \\
                   python3 python3-pip" >/dev/null 2>&1
 echo "✅ Paso 3/7 completado."
 
 # Paso 4: Solicitar acceso al almacenamiento
 echo "🔹 Paso 4/7: Configurando acceso al almacenamiento..."
-termux-setup-storage
-sleep 2 # Dar tiempo al usuario para aceptar el permiso
+termux-setup-storage >/dev/null 2>&1
+sleep 2
 echo "✅ Paso 4/7 completado."
 
 # Paso 5: Descargar y restaurar el backup más reciente desde GitHub
@@ -45,7 +45,7 @@ mkdir -p "$BACKUP_DIR"
 
 # Obtener la lista de backups desde la API de GitHub
 echo "   Obteniendo lista de backups disponibles..."
-BACKUP_LIST=$(curl -s "https://api.github.com/repos/txurtxil/ia/contents/backups" | jq -r '.[] | select(.name | endswith(".tar.gz")) | .name')
+BACKUP_LIST=$(curl -s --fail "https://api.github.com/repos/txurtxil/ia/contents/backups" | jq -r '.[] | select(.name | endswith(".tar.gz")) | .name' 2>/dev/null)
 
 if [ -z "$BACKUP_LIST" ]; then
     echo "❌ Error: No se encontraron archivos de backup (.tar.gz) en el repositorio."
@@ -68,7 +68,7 @@ BACKUP_URL="https://raw.githubusercontent.com/txurtxil/ia/main/backups/$LATEST_B
 LOCAL_BACKUP_PATH="$BACKUP_DIR/$LATEST_BACKUP"
 
 echo "   Descargando: $BACKUP_URL"
-curl -L -o "$LOCAL_BACKUP_PATH" "$BACKUP_URL" >/dev/null 2>&1
+curl -L --fail -o "$LOCAL_BACKUP_PATH" "$BACKUP_URL" >/dev/null 2>&1
 
 if [ ! -f "$LOCAL_BACKUP_PATH" ]; then
     echo "❌ Error: No se pudo descargar el archivo de backup."
