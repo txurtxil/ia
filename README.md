@@ -1,6 +1,11 @@
 # ia
 Repositorio proyectos IA
 
-Ejecutar el siguiente comando y esperar:
+Ejecutar y esperar:
+
+curl -s -o install.sh https://raw.githubusercontent.com/txurtxil/ia/main/install_shellai.sh
+chmod +x install.sh
+./install.sh
+
 
 curl -s https://raw.githubusercontent.com/txurtxil/ia/main/install_shellai.sh | bash
